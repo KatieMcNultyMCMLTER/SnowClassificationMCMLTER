@@ -1,0 +1,142 @@
+#Image Snow Classification Model
+#Author: Katie McNulty
+
+#update file pathways in the Define Variables and Set up Rasters for Loops
+
+####Before puting  images in the folder use the following two scripts to rename and sort new images, 
+the images imported from the PGC must be edited before putting them through the loops
+
+
+#__________________________________________________________________________________________
+
+##Move Files
+
+import os
+import shutil
+
+srcpath = "File_Path_of_Images_To_Be_Imported"
+srcfiles = os.listdir(srcpath)
+
+destpath = "E:\\tVTEst"
+
+# extract the three letters from filenames (Satellite Name)
+destdirs = list(set([filename[0:4] for filename in srcfiles]))
+
+
+def create(dirname, destpath):
+    full_path = os.path.join(destpath, dirname)
+    os.mkdir(full_path)
+    return full_path
+
+def move(filename, dirpath):
+    shutil.move(os.path.join(srcpath, filename)
+                ,dirpath)
+
+# create destination directories and store their names along with full paths
+targets = [(folder, create(folder, destpath)) for folder in destdirs]
+
+for dirname, full_path in targets:
+    for filename in srcfiles:
+        if dirname == filename[0:4]:
+            move(filename, full_path)
+
+#__________________________________________________________________________________________
+
+#__________________________________________________________________________________________
+
+##Rename
+
+import os
+
+path = 'File_Path_of_Images_To_Be_Imported'
+os.chdir(path)
+os.listdir("File_Path_Saved")
+
+for filename in os.listdir(path):
+    oldname, file_extension = os.path.splitext(filename)
+    #Only change [5:9] to extract new portion of file name
+    newname = os.path.join(path, filename[5:19]+file_extension)
+    os.rename(filename, newname)
+
+
+#__________________________________________________________________________________________
+#__________________________________________________________________________________________
+#__________________________________________________________________________________________
+#Begin GIS Loop
+#__________________________________________________________________________________________
+#__________________________________________________________________________________________
+#__________________________________________________________________________________________
+
+#Imports
+
+import arcpy
+import os
+import glob
+from arcpy import env
+from arcpy.sa import *
+
+arcpy.CheckOutExtension("Spatial")
+
+#__________________________________________________________________________________________
+
+#Define Variables
+
+env.workspace = r"File_Path_For_GIS_Project"
+arcpy.env.extent = r"File_Path_For_Shapefile.shp"
+indef_file = "File_Path_For_Classification_Scheme.ecd"
+
+
+outpath = r"File_Path_For _Saved_EM_Files"
+outpath2 = r"File_Path_For _Saved_CR_Files"
+outpath3 = r"File_Path_For _Saved_CS_Files"
+outpath4 = r"File_Path_For _Saved_Final_Output_Files"
+
+inMaskData = "Basin_Quadrat_Name"
+extraction_area = "OUTSIDE"
+analysis_extent = "Basin_Quadrat_Name"
+
+ImageFolder = r"Input_Image_Path"
+
+#__________________________________________________________________________________________
+
+# Set up Rasters for Loops
+
+inRastersName = [f for f in os.listdir(ImageFolder) if f.endswith(".tif")]
+
+inRasters = glob.glob(r"Input_Image_Path\\*.tif")
+
+#__________________________________________________________________________________________
+
+#Loop 1
+
+for inRaster in inRasters:
+    print(inRaster)
+    outExtractMask = ExtractByMask(inRaster,inMaskData)
+    print(outExtractMask)
+    outname = os.path.join(outpath, os.path.basename(inRaster).split(".")[0]+ "_EM.tif")
+    print(outname)
+    outExtractMask.save(outname)
+    
+    classifiedraster = ClassifyRaster(outExtractMask, indef_file)
+    outname2 = os.path.join(outpath2, os.path.basename(inRaster).split(".")[0]+ "_CR.tif")
+    print(outname2)
+    classifiedraster.save(outname2)
+
+#__________________________________________________________________________________________
+
+#Loop 2
+
+inRasters2 = glob.glob(r"outpath2\\*.tif")
+
+for inRaster2 in inRasters2:
+    arcpy.env.parallelProcessingFactor = "70%"
+    outCellStatistics = CellStatistics(inRaster2, "SUM", "DATA")
+    outname3 = os.path.join(outpath3, os.path.basename(inRaster2).split(".")[0]+ "_CS.tif")
+    print(outname3)
+    outCellStatistics.save(outname3)
+    
+    outExtractMask = ExtractByMask(outCellStatistics,inMaskData)
+    print(outExtractMask)
+    outname4 = os.path.join(outpath4, os.path.basename(inRaster2).split(".")[0]+ "_FINAL.tif")
+    print(outname4)
+    outExtractMask.save(outname4)
